@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Stock – Propreté Urbaine</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/stock.css">
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js" defer></script>
+  <script type="module" src="js/stock-ui.js"></script>
+</head>
+<body data-partie="epi">
+
+  <!-- ========== Connexion ========== -->
+  <section id="ecran-connexion" class="connexion" hidden>
+    <form id="form-connexion" class="carte connexion-carte">
+      <h1>Gestion du stock</h1>
+      <p class="aide">Accès réservé aux responsables.</p>
+      <label>Adresse e-mail
+        <input type="email" id="cx-email" required autocomplete="username">
+      </label>
+      <label>Mot de passe
+        <input type="password" id="cx-mdp" required autocomplete="current-password">
+      </label>
+      <p id="cx-erreur" class="message-erreur" hidden></p>
+      <button type="submit" class="btn btn-principal">Se connecter</button>
+    </form>
+  </section>
+
+  <!-- ========== Application ========== -->
+  <div id="app" hidden>
+    <header class="entete">
+      <div class="entete-titre">
+        <h1>Stock</h1>
+        <span>Propreté Urbaine</span>
+      </div>
+      <div class="bascule-partie">
+        <button type="button" data-partie="epi" aria-pressed="true">
+          EPI <span class="badge" id="badge-epi" hidden></span>
+        </button>
+        <button type="button" data-partie="materiel" aria-pressed="false">
+          Matériel &amp; produits <span class="badge" id="badge-materiel" hidden></span>
+        </button>
+      </div>
+      <button type="button" id="btn-deconnexion" class="btn-lien">Se déconnecter</button>
+    </header>
+
+    <nav class="onglets" aria-label="Sections">
+      <button type="button" data-vue="global" aria-current="page">Vue globale</button>
+      <button type="button" data-vue="mouvement">Entrée / sortie</button>
+      <button type="button" data-vue="historique">Historique</button>
+      <button type="button" data-vue="articles">Articles</button>
+      <button type="button" data-vue="parametres">Familles &amp; agents</button>
+    </nav>
+
+    <main>
+      <!-- ---------- Vue globale ---------- -->
+      <section id="vue-global" class="vue">
+        <div class="resume" id="global-resume"></div>
+        <div class="barre-outils">
+          <input type="search" id="global-recherche" placeholder="Rechercher un article">
+          <label class="case">
+            <input type="checkbox" id="global-alertes"> Alertes uniquement
+          </label>
+        </div>
+        <div id="global-liste"></div>
+      </section>
+
+      <!-- ---------- Entrée / sortie ---------- -->
+      <section id="vue-mouvement" class="vue" hidden>
+        <form id="form-mouvement" class="carte formulaire">
+          <fieldset class="choix-type">
+            <legend>Type de mouvement</legend>
+            <label><input type="radio" name="mvt-type" value="sortie" checked> Sortie</label>
+            <label><input type="radio" name="mvt-type" value="entree"> Entrée</label>
+          </fieldset>
+
+          <label>Article
+            <select id="mvt-article" required></select>
+          </label>
+          <p id="mvt-info" class="info-stock" hidden></p>
+
+          <div class="ligne-champs">
+            <label>Quantité
+              <input type="number" id="mvt-quantite" min="0.01" step="any" inputmode="decimal" required>
+            </label>
+            <label>Date
+              <input type="date" id="mvt-date" required>
+            </label>
+          </div>
+
+          <div id="bloc-beneficiaire">
+            <label>Attribué à
+              <select id="mvt-beneficiaire"></select>
+            </label>
+            <button type="button" id="btn-nouveau-benef" class="btn-lien">+ Ajouter un agent ou un service</button>
+            <div id="form-nouveau-benef" class="sous-formulaire" hidden>
+              <select id="nb-type" aria-label="Type">
+                <option value="agent">Agent</option>
+                <option value="service">Service</option>
+              </select>
+              <input type="text" id="nb-libelle" maxlength="40" placeholder="Initiales ou nom du service" aria-label="Initiales ou nom du service">
+              <button type="button" id="btn-ajouter-benef" class="btn btn-secondaire">Ajouter</button>
+            </div>
+          </div>
+
+          <label>Commentaire <span class="facultatif">(facultatif)</span>
+            <input type="text" id="mvt-commentaire" maxlength="200" placeholder="N° de bon, fournisseur, motif…">
+          </label>
+
+          <button type="submit" id="mvt-valider" class="btn btn-principal">Enregistrer la sortie</button>
+        </form>
+      </section>
+
+      <!-- ---------- Historique ---------- -->
+      <section id="vue-historique" class="vue" hidden>
+        <div class="filtres carte">
+          <label>Du
+            <input type="date" id="hist-du">
+          </label>
+          <label>Au
+            <input type="date" id="hist-au">
+          </label>
+          <label>Type
+            <select id="hist-type">
+              <option value="">Tous</option>
+              <option value="sortie">Sorties</option>
+              <option value="entree">Entrées</option>
+            </select>
+          </label>
+          <label>Article
+            <select id="hist-article"></select>
+          </label>
+          <label>Attribué à
+            <select id="hist-beneficiaire"></select>
+          </label>
+          <button type="button" id="btn-export" class="btn btn-secondaire">Exporter en Excel</button>
+        </div>
+        <p id="hist-compte" class="compte"></p>
+        <div class="tableau-conteneur">
+          <table class="tableau">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Type</th>
+                <th>Article</th>
+                <th class="num">Quantité</th>
+                <th>Attribué à</th>
+                <th class="num">Stock après</th>
+                <th>Commentaire</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="hist-tbody"></tbody>
+          </table>
+        </div>
+        <details class="recap carte" open>
+          <summary>Total des sorties par agent ou service</summary>
+          <div id="hist-recap"></div>
+        </details>
+      </section>
+
+      <!-- ---------- Articles ---------- -->
+      <section id="vue-articles" class="vue" hidden>
+        <div class="barre-outils">
+          <input type="search" id="art-recherche" placeholder="Rechercher une référence ou un article">
+          <label class="case">
+            <input type="checkbox" id="art-archives"> Afficher les archivés
+          </label>
+          <button type="button" id="btn-nouvel-article" class="btn btn-principal">Nouvel article</button>
+        </div>
+        <div class="tableau-conteneur">
+          <table class="tableau">
+            <thead>
+              <tr>
+                <th>Référence</th>
+                <th>Désignation</th>
+                <th>Famille</th>
+                <th>Unité</th>
+                <th class="num">Seuil</th>
+                <th class="num">Stock</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="art-tbody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ---------- Familles & agents ---------- -->
+      <section id="vue-parametres" class="vue" hidden>
+        <div class="colonnes">
+          <div class="carte">
+            <h2>Familles – <span id="param-partie"></span></h2>
+            <form id="form-famille" class="ajout-inline">
+              <input type="text" id="famille-nom" maxlength="40" required placeholder="Ex : Gants, Détergents" aria-label="Nom de la famille">
+              <button type="submit" class="btn btn-secondaire">Ajouter</button>
+            </form>
+            <ul id="liste-familles" class="liste-simple"></ul>
+          </div>
+          <div class="carte">
+            <h2>Agents et services</h2>
+            <p class="aide">Communs aux EPI et au matériel. Pour les agents, saisis uniquement les initiales ou un surnom.</p>
+            <form id="form-benef" class="ajout-inline">
+              <select id="benef-type" aria-label="Type">
+                <option value="agent">Agent</option>
+                <option value="service">Service</option>
+              </select>
+              <input type="text" id="benef-libelle" maxlength="40" required placeholder="Initiales ou nom du service" aria-label="Initiales ou nom du service">
+              <button type="submit" class="btn btn-secondaire">Ajouter</button>
+            </form>
+            <h3>Agents</h3>
+            <ul id="liste-agents" class="liste-simple"></ul>
+            <h3>Services</h3>
+            <ul id="liste-services" class="liste-simple"></ul>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- ========== Modale article ========== -->
+  <dialog id="modale-article" class="modale">
+    <form id="form-article" class="formulaire">
+      <h2 id="modale-article-titre">Nouvel article</h2>
+      <div class="ligne-champs">
+        <label>Référence
+          <input type="text" id="art-reference" maxlength="40" required>
+        </label>
+        <label>Unité
+          <input type="text" id="art-unite" list="liste-unites" maxlength="20" placeholder="pièce">
+        </label>
+      </div>
+      <label>Désignation
+        <input type="text" id="art-designation" maxlength="80" required placeholder="Ex : Gants nitrile T9">
+      </label>
+      <label>Famille
+        <select id="art-famille" required></select>
+      </label>
+      <div class="ligne-champs">
+        <label>Seuil d'alerte
+          <input type="number" id="art-seuil" min="0" step="any" value="0" required>
+        </label>
+        <label id="champ-stock-initial">Stock initial
+          <input type="number" id="art-stock-initial" min="0" step="any" value="0">
+        </label>
+      </div>
+      <div class="modale-actions">
+        <button type="button" id="btn-annuler-article" class="btn btn-secondaire">Annuler</button>
+        <button type="submit" class="btn btn-principal">Enregistrer</button>
+      </div>
+    </form>
+  </dialog>
+
+  <datalist id="liste-unites">
+    <option value="pièce">
+    <option value="paire">
+    <option value="boîte">
+    <option value="carton">
+    <option value="rouleau">
+    <option value="sac">
+    <option value="litre">
+    <option value="bidon">
+    <option value="flacon">
+    <option value="kg">
+  </datalist>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+</body>
+</html>
