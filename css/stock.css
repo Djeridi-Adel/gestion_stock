@@ -848,11 +848,13 @@ main {
   color: #FFFFFF;
   background: var(--encre);
   border-radius: var(--rayon);
-  transform: translate(-50%, 150%);
-  transition: transform 0.25s ease;
+  visibility: hidden;
+  transform: translate(-50%, calc(100% + 40px));
+  transition: transform 0.25s ease, visibility 0.25s;
 }
 
 .toast.visible {
+  visibility: visible;
   transform: translate(-50%, 0);
 }
 
