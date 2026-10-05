@@ -282,6 +282,21 @@ input[type="radio"] {
   border-radius: 999px;
 }
 
+.mode-lecture {
+  padding: 2px 10px;
+  font-size: 0.8rem;
+  font-style: normal;
+  font-weight: 700;
+  color: var(--encre);
+  background: var(--surface);
+  border-radius: 999px;
+}
+
+/* Mode consultation : tout ce qui modifie les données est retiré */
+.lecture-seule [data-ecriture] {
+  display: none !important;
+}
+
 /* ---------- Onglets ---------- */
 
 .onglets {

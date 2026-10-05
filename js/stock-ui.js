@@ -15,7 +15,10 @@ const PARTIES = {
   materiel: "Matériel & produits"
 };
 
+const VUES = ["global", "mouvement", "historique", "articles", "parametres"];
+
 const etat = {
+  profil: null,
   partie: "epi",
   vue: "global",
   familles: [],
@@ -156,15 +159,58 @@ function erreurLecture(err) {
 // Démarrage / authentification
 // ============================================================
 
-onAuthStateChanged(auth, (user) => {
-  $("#ecran-connexion").hidden = Boolean(user);
-  $("#app").hidden = !user;
-  if (user) {
-    demarrer();
-  } else {
+onAuthStateChanged(auth, async (user) => {
+  $("#ecran-refus").hidden = true;
+
+  if (!user) {
     arreter();
+    $("#app").hidden = true;
+    $("#ecran-connexion").hidden = false;
+    return;
   }
+
+  $("#ecran-connexion").hidden = true;
+
+  let profil = null;
+  try {
+    profil = await donnees.lireProfil(user.email);
+  } catch (err) {
+    console.error(err);
+  }
+
+  if (!profil) {
+    $("#app").hidden = true;
+    $("#ecran-refus").hidden = false;
+    return;
+  }
+
+  appliquerProfil(profil);
+  $("#app").hidden = false;
+  demarrer();
 });
+
+// Rôle "admin" : tout. Rôle "lecture" : onglets et parties listés, sans aucune action.
+function appliquerProfil(profil) {
+  const admin = profil.role === "admin";
+  const toutesParties = Object.keys(PARTIES);
+
+  let parties = Array.isArray(profil.parties) ? profil.parties.filter((p) => p in PARTIES) : [];
+  if (admin || !parties.length) parties = toutesParties;
+
+  let vues = Array.isArray(profil.onglets) ? profil.onglets : ["global", "historique"];
+  vues = admin ? VUES : vues.filter((v) => VUES.includes(v) && v !== "mouvement");
+  if (!vues.length) vues = ["global"];
+
+  etat.profil = { admin, parties, vues };
+  document.body.classList.toggle("lecture-seule", !admin);
+  $("#mode-lecture").hidden = admin;
+
+  $$(".bascule-partie button").forEach((b) => { b.hidden = !parties.includes(b.dataset.partie); });
+  $$(".onglets button").forEach((b) => { b.hidden = !vues.includes(b.dataset.vue); });
+
+  if (!parties.includes(etat.partie)) etat.partie = parties[0];
+  if (!vues.includes(etat.vue)) etat.vue = vues[0];
+}
 
 function demarrer() {
   if (etat.demarre) return;
@@ -175,6 +221,7 @@ function demarrer() {
     donnees.ecouterBeneficiaires((l) => { etat.beneficiaires = l; rendre(); }, erreurLecture)
   ];
   changerPartie(etat.partie);
+  changerVue(etat.vue);
 }
 
 function arreter() {
@@ -183,6 +230,8 @@ function arreter() {
   etat.ecoutes = [];
   etat.stopMouvements = null;
   etat.demarre = false;
+  etat.profil = null;
+  document.body.classList.remove("lecture-seule");
   etat.familles = [];
   etat.articles = [];
   etat.beneficiaires = [];
@@ -228,12 +277,14 @@ $("#form-connexion").addEventListener("submit", async (e) => {
 });
 
 $("#btn-deconnexion").addEventListener("click", () => signOut(auth));
+$("#btn-refus-deconnexion").addEventListener("click", () => signOut(auth));
 
 // ============================================================
 // Navigation
 // ============================================================
 
 function changerPartie(partie) {
+  if (etat.profil && !etat.profil.parties.includes(partie)) return;
   etat.partie = partie;
   document.body.dataset.partie = partie;
   $$(".bascule-partie button").forEach((b) => {
@@ -245,6 +296,7 @@ function changerPartie(partie) {
 }
 
 function changerVue(vue) {
+  if (etat.profil && !etat.profil.vues.includes(vue)) return;
   etat.vue = vue;
   $$(".vue").forEach((s) => { s.hidden = s.id !== `vue-${vue}`; });
   $$(".onglets button").forEach((b) => {
@@ -274,7 +326,7 @@ function rendre() {
 }
 
 function rendreBadges() {
-  for (const p of Object.keys(PARTIES)) {
+  for (const p of etat.profil.parties) {
     const n = etat.articles.filter((a) => a.partie === p && a.actif !== false && niveau(a) !== "ok").length;
     const badge = $(`#badge-${p}`);
     badge.textContent = n;
@@ -303,7 +355,7 @@ function rendreGlobal() {
     $("#global-liste").innerHTML = `
       <div class="vide-bloc">
         <p>Aucun article en ${esc(PARTIES[etat.partie])} pour l'instant.</p>
-        <button type="button" class="btn btn-principal" data-aller="articles">Créer un article</button>
+        <button type="button" class="btn btn-principal" data-aller="articles" data-ecriture>Créer un article</button>
       </div>`;
     return;
   }
@@ -350,7 +402,7 @@ function ligneStock(a) {
         <strong>${nb(a.stock)}</strong> ${esc(a.unite)}
         <small>seuil ${nb(seuil)}</small>
       </div>
-      <div class="ligne-actions">
+      <div class="ligne-actions" data-ecriture>
         <button type="button" class="btn btn-secondaire btn-petit" data-action="sortie" data-id="${a.id}">Sortie</button>
         <button type="button" class="btn btn-secondaire btn-petit" data-action="entree" data-id="${a.id}">Entrée</button>
       </div>
@@ -567,7 +619,7 @@ function rendreHistorique() {
         <td>${esc(m.beneficiaireLibelle) || "—"}</td>
         <td class="num">${nb(m.stockApres)}</td>
         <td>${esc(m.commentaire)}</td>
-        <td><button type="button" class="btn-lien" data-annuler="${m.id}">Annuler</button></td>
+        <td><button type="button" class="btn-lien" data-annuler="${m.id}" data-ecriture>Annuler</button></td>
       </tr>`).join("")
     : `<tr><td colspan="8" class="vide">Aucun mouvement sur cette période avec ces filtres.</td></tr>`;
 
@@ -705,8 +757,8 @@ function rendreArticles() {
         <td class="num">${nb(a.seuilAlerte)}</td>
         <td class="num"><span class="stock-${niveau(a)}">${nb(a.stock)}</span></td>
         <td class="actions">
-          <button type="button" class="btn-lien" data-modifier="${a.id}">Modifier</button>
-          <button type="button" class="btn-lien" data-archiver="${a.id}">${a.actif === false ? "Réactiver" : "Archiver"}</button>
+          <button type="button" class="btn-lien" data-modifier="${a.id}" data-ecriture>Modifier</button>
+          <button type="button" class="btn-lien" data-archiver="${a.id}" data-ecriture>${a.actif === false ? "Réactiver" : "Archiver"}</button>
         </td>
       </tr>`).join("")
     : `<tr><td colspan="7" class="vide">${tous.length ? "Aucun article ne correspond à la recherche." : "Aucun article. Clique sur « Nouvel article » pour commencer."}</td></tr>`;
@@ -815,7 +867,7 @@ function rendreParametres() {
       return `
         <li>
           <span>${esc(f.nom)} <small>${n} article(s)</small></span>
-          <span class="actions">
+          <span class="actions" data-ecriture>
             <button type="button" class="btn-lien" data-renommer="${f.id}">Renommer</button>
             <button type="button" class="btn-lien" data-supprimer-famille="${f.id}" ${n ? `disabled title="Utilisée par ${n} article(s)"` : ""}>Supprimer</button>
           </span>
@@ -832,7 +884,7 @@ function rendreParametres() {
       ? liste.map((b) => `
         <li>
           <span>${esc(b.libelle)}</span>
-          <button type="button" class="btn-lien" data-supprimer-benef="${b.id}">Supprimer</button>
+          <button type="button" class="btn-lien" data-supprimer-benef="${b.id}" data-ecriture>Supprimer</button>
         </li>`).join("")
       : `<li class="vide">${vide}</li>`;
   }

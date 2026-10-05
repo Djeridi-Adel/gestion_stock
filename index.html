@@ -29,12 +29,22 @@
     </form>
   </section>
 
+  <!-- ========== Accès refusé ========== -->
+  <section id="ecran-refus" class="connexion" hidden>
+    <div class="carte connexion-carte">
+      <h1>Accès non autorisé</h1>
+      <p class="aide">Ton compte existe mais n'a pas de droits sur l'app stock. Demande à un administrateur de te les attribuer.</p>
+      <button type="button" id="btn-refus-deconnexion" class="btn btn-secondaire">Se déconnecter</button>
+    </div>
+  </section>
+
   <!-- ========== Application ========== -->
   <div id="app" hidden>
     <header class="entete">
       <div class="entete-titre">
         <h1>Stock</h1>
         <span>Propreté Urbaine</span>
+        <em id="mode-lecture" class="mode-lecture" hidden>Consultation</em>
       </div>
       <div class="bascule-partie">
         <button type="button" data-partie="epi" aria-pressed="true">
@@ -49,7 +59,7 @@
 
     <nav class="onglets" aria-label="Sections">
       <button type="button" data-vue="global" aria-current="page">Vue globale</button>
-      <button type="button" data-vue="mouvement">Entrée / sortie</button>
+      <button type="button" data-vue="mouvement" data-ecriture>Entrée / sortie</button>
       <button type="button" data-vue="historique">Historique</button>
       <button type="button" data-vue="articles">Articles</button>
       <button type="button" data-vue="parametres">Familles &amp; agents</button>
@@ -173,7 +183,7 @@
           <label class="case">
             <input type="checkbox" id="art-archives"> Afficher les archivés
           </label>
-          <button type="button" id="btn-nouvel-article" class="btn btn-principal">Nouvel article</button>
+          <button type="button" id="btn-nouvel-article" class="btn btn-principal" data-ecriture>Nouvel article</button>
         </div>
         <div class="tableau-conteneur">
           <table class="tableau">
@@ -198,7 +208,7 @@
         <div class="colonnes">
           <div class="carte">
             <h2>Familles – <span id="param-partie"></span></h2>
-            <form id="form-famille" class="ajout-inline">
+            <form id="form-famille" class="ajout-inline" data-ecriture>
               <input type="text" id="famille-nom" maxlength="40" required placeholder="Ex : Gants, Détergents" aria-label="Nom de la famille">
               <button type="submit" class="btn btn-secondaire">Ajouter</button>
             </form>
@@ -207,7 +217,7 @@
           <div class="carte">
             <h2>Agents et services</h2>
             <p class="aide">Communs aux EPI et au matériel. Pour les agents, saisis uniquement les initiales ou un surnom.</p>
-            <form id="form-benef" class="ajout-inline">
+            <form id="form-benef" class="ajout-inline" data-ecriture>
               <select id="benef-type" aria-label="Type">
                 <option value="agent">Agent</option>
                 <option value="service">Service</option>

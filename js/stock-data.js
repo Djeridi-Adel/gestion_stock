@@ -6,6 +6,7 @@ import { db, auth } from "./firebase.js";
 import {
   collection,
   doc,
+  getDoc,
   setDoc,
   updateDoc,
   deleteDoc,
@@ -23,11 +24,20 @@ export const COLLECTIONS = {
   familles: "stk-familles",
   articles: "stk-articles",
   mouvements: "stk-mouvements",
-  beneficiaires: "stk-beneficiaires"
+  beneficiaires: "stk-beneficiaires",
+  utilisateurs: "stk-utilisateurs"
 };
 
 const arrondir = (n) => Math.round(n * 100) / 100;
 const avecId = (snap) => snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+
+// ---------- Profil de l'utilisateur connecté ----------
+
+// Document stk-utilisateurs/<email en minuscules>, créé depuis la console Firebase.
+export async function lireProfil(email) {
+  const snap = await getDoc(doc(db, COLLECTIONS.utilisateurs, email.toLowerCase()));
+  return snap.exists() ? snap.data() : null;
+}
 
 // ---------- Écoutes temps réel ----------
 
