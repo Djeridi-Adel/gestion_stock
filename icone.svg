@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <clipPath id="fond">
+      <rect width="512" height="512" rx="112"/>
+    </clipPath>
+    <pattern id="balisage" width="56" height="56" patternUnits="userSpaceOnUse" patternTransform="rotate(-45)">
+      <rect width="28" height="56" fill="#F5B700"/>
+      <rect x="28" width="28" height="56" fill="#1D2433"/>
+    </pattern>
+  </defs>
+  <g clip-path="url(#fond)">
+    <rect width="512" height="512" fill="#1D2433"/>
+    <!-- Bande de balisage -->
+    <rect y="410" width="512" height="102" fill="url(#balisage)"/>
+    <!-- Carton -->
+    <rect x="118" y="170" width="276" height="196" rx="18" fill="#F5B700"/>
+    <!-- Couvercle -->
+    <rect x="96" y="112" width="320" height="74" rx="18" fill="#FFC933"/>
+    <!-- Ruban -->
+    <rect x="226" y="112" width="60" height="254" fill="#1D2433" opacity="0.22"/>
+    <!-- Étiquette -->
+    <rect x="152" y="236" width="96" height="16" rx="8" fill="#1D2433" opacity="0.55"/>
+    <rect x="152" y="268" width="64" height="16" rx="8" fill="#1D2433" opacity="0.55"/>
+  </g>
+</svg>
