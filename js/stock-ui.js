@@ -694,10 +694,21 @@ $("#hist-tbody").addEventListener("click", async (e) => {
 });
 
 $("#btn-export").addEventListener("click", () => {
+  console.info("[stock] Export Excel demandé");
   if (!window.XLSX) {
+    console.error("[stock] window.XLSX introuvable : la bibliothèque SheetJS n'a pas été chargée.");
     toast("Export indisponible : la bibliothèque Excel n'est pas chargée.", "erreur");
     return;
   }
+  try {
+    exporterExcel();
+  } catch (err) {
+    console.error("[stock] Échec de l'export Excel", err);
+    toast(`Export impossible : ${err.message}`, "erreur");
+  }
+});
+
+function exporterExcel() {
   const liste = mouvementsFiltres();
   const libelleType = (t) => (t === "agent" ? "Agent" : t === "service" ? "Service" : "");
 
@@ -745,8 +756,11 @@ $("#btn-export").addEventListener("click", () => {
   XLSX.utils.book_append_sheet(classeur, XLSX.utils.json_to_sheet(feuilleMouvements), "Mouvements");
   XLSX.utils.book_append_sheet(classeur, XLSX.utils.json_to_sheet(feuilleRecap), "Sorties par agent-service");
   XLSX.utils.book_append_sheet(classeur, XLSX.utils.json_to_sheet(feuilleStock), "État du stock");
-  XLSX.writeFile(classeur, `stock-${etat.partie}-${$("#hist-du").value}_${$("#hist-au").value}.xlsx`);
-});
+  const nomFichier = `stock-${etat.partie}-${$("#hist-du").value}_${$("#hist-au").value}.xlsx`;
+  XLSX.writeFile(classeur, nomFichier);
+  console.info(`[stock] Export généré : ${nomFichier}`);
+  toast(`Export téléchargé : ${nomFichier}`);
+}
 
 // ============================================================
 // Articles
