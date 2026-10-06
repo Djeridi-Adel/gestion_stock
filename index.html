@@ -194,6 +194,7 @@
                 <th>Famille</th>
                 <th>Unité</th>
                 <th class="num">Seuil</th>
+                <th class="num">Cible</th>
                 <th class="num">Stock</th>
                 <th></th>
               </tr>
@@ -257,10 +258,13 @@
         <label>Seuil d'alerte
           <input type="number" id="art-seuil" min="0" step="any" value="0" required>
         </label>
-        <label id="champ-stock-initial">Stock initial
-          <input type="number" id="art-stock-initial" min="0" step="any" value="0">
+        <label>Stock cible <span class="facultatif">(facultatif)</span>
+          <input type="number" id="art-cible" min="0" step="any" placeholder="Après réassort">
         </label>
       </div>
+      <label id="champ-stock-initial">Stock initial
+        <input type="number" id="art-stock-initial" min="0" step="any" value="0">
+      </label>
       <div class="modale-actions">
         <button type="button" id="btn-annuler-article" class="btn btn-secondaire">Annuler</button>
         <button type="submit" class="btn btn-principal">Enregistrer</button>

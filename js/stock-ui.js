@@ -80,6 +80,13 @@ function niveau(article) {
   return "ok";
 }
 
+// Quantité pour revenir au stock cible, uniquement si l'article est sous le seuil.
+function aCommander(article) {
+  const cible = article.stockCible || 0;
+  if (!cible || niveau(article) === "ok") return 0;
+  return Math.max(Math.round((cible - (article.stock || 0)) * 100) / 100, 0);
+}
+
 function articlesPartie({ archives = false } = {}) {
   return etat.articles.filter((a) => a.partie === etat.partie && (archives || a.actif !== false));
 }
@@ -382,7 +389,9 @@ function rendreGlobal() {
 function ligneStock(a) {
   const stock = Math.max(a.stock || 0, 0);
   const seuil = a.seuilAlerte || 0;
-  const max = Math.max(seuil * 3, stock, 1);
+  const cible = a.stockCible || 0;
+  const max = cible > 0 ? Math.max(cible, stock) : Math.max(seuil * 3, stock, 1);
+  const commande = aCommander(a);
   const pct = Math.min((stock / max) * 100, 100);
   const seuilPct = Math.min((seuil / max) * 100, 100);
   const niv = niveau(a);
@@ -400,7 +409,8 @@ function ligneStock(a) {
       </div>
       <div class="ligne-qte">
         <strong>${nb(a.stock)}</strong> ${esc(a.unite)}
-        <small>seuil ${nb(seuil)}</small>
+        <small>seuil ${nb(seuil)}${cible > 0 ? `, cible ${nb(cible)}` : ""}</small>
+        ${commande > 0 ? `<small class="a-commander">À commander : ${nb(commande)}</small>` : ""}
       </div>
       <div class="ligne-actions" data-ecriture>
         <button type="button" class="btn btn-secondaire btn-petit" data-action="sortie" data-id="${a.id}">Sortie</button>
@@ -726,6 +736,8 @@ $("#btn-export").addEventListener("click", () => {
       "Unité": a.unite,
       "Stock": a.stock,
       "Seuil d'alerte": a.seuilAlerte,
+      "Stock cible": a.stockCible || "",
+      "À commander": aCommander(a) || "",
       "État": { ok: "OK", alerte: "Sous le seuil", rupture: "Rupture" }[niveau(a)]
     }));
 
@@ -755,13 +767,14 @@ function rendreArticles() {
         <td>${esc(nomFamille(a.familleId))}</td>
         <td>${esc(a.unite)}</td>
         <td class="num">${nb(a.seuilAlerte)}</td>
+        <td class="num">${a.stockCible ? nb(a.stockCible) : "—"}</td>
         <td class="num"><span class="stock-${niveau(a)}">${nb(a.stock)}</span></td>
         <td class="actions">
           <button type="button" class="btn-lien" data-modifier="${a.id}" data-ecriture>Modifier</button>
           <button type="button" class="btn-lien" data-archiver="${a.id}" data-ecriture>${a.actif === false ? "Réactiver" : "Archiver"}</button>
         </td>
       </tr>`).join("")
-    : `<tr><td colspan="7" class="vide">${tous.length ? "Aucun article ne correspond à la recherche." : "Aucun article. Clique sur « Nouvel article » pour commencer."}</td></tr>`;
+    : `<tr><td colspan="8" class="vide">${tous.length ? "Aucun article ne correspond à la recherche." : "Aucun article. Clique sur « Nouvel article » pour commencer."}</td></tr>`;
 }
 
 $("#art-recherche").addEventListener("input", rendreArticles);
@@ -810,6 +823,7 @@ function ouvrirModaleArticle(article = null) {
     $("#art-famille").value = article.familleId;
     $("#art-unite").value = article.unite;
     $("#art-seuil").value = article.seuilAlerte;
+    $("#art-cible").value = article.stockCible || "";
   }
 
   $("#modale-article").showModal();
@@ -826,8 +840,14 @@ $("#form-article").addEventListener("submit", async (e) => {
     designation: $("#art-designation").value.trim(),
     familleId: $("#art-famille").value,
     unite: $("#art-unite").value.trim() || "pièce",
-    seuilAlerte: Number($("#art-seuil").value) || 0
+    seuilAlerte: Number($("#art-seuil").value) || 0,
+    stockCible: Number($("#art-cible").value) || 0
   };
+
+  if (champs.stockCible > 0 && champs.stockCible <= champs.seuilAlerte) {
+    toast("Le stock cible doit être supérieur au seuil d'alerte.", "erreur");
+    return;
+  }
 
   const doublon = etat.articles.some((a) =>
     a.partie === etat.partie &&

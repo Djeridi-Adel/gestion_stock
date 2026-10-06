@@ -560,6 +560,11 @@ main {
   color: var(--encre-douce);
 }
 
+.ligne-qte .a-commander {
+  font-weight: 700;
+  color: var(--encre);
+}
+
 .ligne-actions {
   grid-area: actions;
   display: flex;
