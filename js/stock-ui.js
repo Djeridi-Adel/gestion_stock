@@ -28,7 +28,8 @@ const etat = {
   demarre: false,
   ecoutes: [],
   stopMouvements: null,
-  benefEnAttente: null
+  benefEnAttente: null,
+  filtreGlobal: "tous"
 };
 
 // ============================================================
@@ -348,17 +349,31 @@ function rendreBadges() {
 
 function rendreGlobal() {
   const recherche = $("#global-recherche").value.trim().toLowerCase();
-  const alertesSeules = $("#global-alertes").checked;
-  const articles = articlesPartie();
+
+  const optionsFamilles = famillesPartie()
+    .map((f) => `<option value="${f.id}">${esc(f.nom)}</option>`)
+    .join("");
+  remplirSelect($("#global-famille"), `<option value="">Toutes les familles</option>${optionsFamilles}`);
+  const familleId = $("#global-famille").value;
+
+  const tousArticles = articlesPartie();
+  // Les compteurs suivent le filtre famille.
+  const articles = tousArticles.filter((a) => !familleId || a.familleId === familleId);
   const nbAlerte = articles.filter((a) => niveau(a) === "alerte").length;
   const nbRupture = articles.filter((a) => niveau(a) === "rupture").length;
+  const filtre = etat.filtreGlobal;
 
-  $("#global-resume").innerHTML = `
-    <div class="stat"><strong>${articles.length}</strong><span>références</span></div>
-    <div class="stat stat-alerte"><strong>${nbAlerte}</strong><span>sous le seuil</span></div>
-    <div class="stat stat-rupture"><strong>${nbRupture}</strong><span>en rupture</span></div>`;
+  const carteStat = (code, nombre, libelle, classe = "") => `
+    <button type="button" class="stat ${classe}" data-filtre="${code}" aria-pressed="${filtre === code}">
+      <strong>${nombre}</strong><span>${libelle}</span>
+    </button>`;
 
-  if (!articles.length) {
+  $("#global-resume").innerHTML =
+    carteStat("tous", articles.length, "références") +
+    carteStat("alerte", nbAlerte, "sous le seuil", "stat-alerte") +
+    carteStat("rupture", nbRupture, "en rupture", "stat-rupture");
+
+  if (!tousArticles.length) {
     $("#global-liste").innerHTML = `
       <div class="vide-bloc">
         <p>Aucun article en ${esc(PARTIES[etat.partie])} pour l'instant.</p>
@@ -368,12 +383,17 @@ function rendreGlobal() {
   }
 
   const filtres = articles.filter((a) =>
-    (!alertesSeules || niveau(a) !== "ok") &&
+    (filtre === "tous" || niveau(a) === filtre) &&
     (!recherche || `${a.designation} ${a.reference}`.toLowerCase().includes(recherche))
   );
 
   if (!filtres.length) {
-    $("#global-liste").innerHTML = `<p class="vide">${alertesSeules ? "Aucun article sous le seuil. Tout est en ordre." : "Aucun article ne correspond à la recherche."}</p>`;
+    const messages = {
+      tous: "Aucun article ne correspond à ces filtres.",
+      alerte: "Aucun article sous le seuil.",
+      rupture: "Aucun article en rupture."
+    };
+    $("#global-liste").innerHTML = `<p class="vide">${messages[filtre]}</p>`;
     return;
   }
 
@@ -420,7 +440,16 @@ function ligneStock(a) {
 }
 
 $("#global-recherche").addEventListener("input", rendreGlobal);
-$("#global-alertes").addEventListener("change", rendreGlobal);
+$("#global-famille").addEventListener("change", rendreGlobal);
+
+// Clic sur un compteur : filtre sur ce niveau, un second clic revient à tout afficher.
+$("#global-resume").addEventListener("click", (e) => {
+  const carte = e.target.closest("[data-filtre]");
+  if (!carte) return;
+  const code = carte.dataset.filtre;
+  etat.filtreGlobal = etat.filtreGlobal === code ? "tous" : code;
+  rendreGlobal();
+});
 
 $("#global-liste").addEventListener("click", (e) => {
   const bouton = e.target.closest("button");
@@ -757,9 +786,26 @@ function exporterExcel() {
   XLSX.utils.book_append_sheet(classeur, XLSX.utils.json_to_sheet(feuilleRecap), "Sorties par agent-service");
   XLSX.utils.book_append_sheet(classeur, XLSX.utils.json_to_sheet(feuilleStock), "État du stock");
   const nomFichier = `stock-${etat.partie}-${$("#hist-du").value}_${$("#hist-au").value}.xlsx`;
-  XLSX.writeFile(classeur, nomFichier);
-  console.info(`[stock] Export généré : ${nomFichier}`);
-  toast(`Export téléchargé : ${nomFichier}`);
+  const contenu = XLSX.write(classeur, { bookType: "xlsx", type: "array" });
+  const blob = new Blob([contenu], {
+    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+  });
+  proposerTelechargement(blob, nomFichier);
+  console.info(`[stock] Export généré : ${nomFichier} (${blob.size} octets)`);
+  toast("Fichier prêt. S'il ne se télécharge pas, clique sur le lien vert.");
+}
+
+// Lien de téléchargement réel, affiché sous les filtres : il reste cliquable
+// si le navigateur ignore le téléchargement automatique.
+let urlExport = null;
+function proposerTelechargement(blob, nomFichier) {
+  if (urlExport) URL.revokeObjectURL(urlExport);
+  urlExport = URL.createObjectURL(blob);
+
+  const zone = $("#export-lien");
+  zone.innerHTML = `<a class="btn btn-principal" href="${urlExport}" download="${esc(nomFichier)}">Télécharger ${esc(nomFichier)}</a>`;
+  zone.hidden = false;
+  zone.querySelector("a").click();
 }
 
 // ============================================================
