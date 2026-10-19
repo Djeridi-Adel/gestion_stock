@@ -54,14 +54,14 @@ export function ecouterBeneficiaires(cb, onErreur) {
 }
 
 // Nécessite un index composite : partie (croissant) + date (décroissant).
+// debut et fin sont facultatifs : sans eux, tout l'historique de la partie est chargé.
 export function ecouterMouvements(partie, debut, fin, cb, onErreur) {
-  const q = query(
-    collection(db, COLLECTIONS.mouvements),
-    where("partie", "==", partie),
-    where("date", ">=", Timestamp.fromDate(debut)),
-    where("date", "<=", Timestamp.fromDate(fin)),
-    orderBy("date", "desc")
-  );
+  const contraintes = [where("partie", "==", partie)];
+  if (debut) contraintes.push(where("date", ">=", Timestamp.fromDate(debut)));
+  if (fin) contraintes.push(where("date", "<=", Timestamp.fromDate(fin)));
+  contraintes.push(orderBy("date", "desc"));
+
+  const q = query(collection(db, COLLECTIONS.mouvements), ...contraintes);
   return onSnapshot(q, (s) => cb(avecId(s)), onErreur);
 }
 

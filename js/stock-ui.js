@@ -251,17 +251,19 @@ function abonnerMouvements() {
   etat.stopMouvements?.();
   etat.mouvements = [];
 
+  // Dates facultatives : un champ vide signifie « pas de limite de ce côté ».
   const du = $("#hist-du").value;
   const au = $("#hist-au").value;
-  if (!du || !au || du > au) {
+  if (du && au && du > au) {
     toast("Période invalide : la date de début doit précéder la date de fin.", "erreur");
+    if (etat.vue === "historique") rendreHistorique();
     return;
   }
 
   etat.stopMouvements = donnees.ecouterMouvements(
     etat.partie,
-    new Date(`${du}T00:00:00`),
-    new Date(`${au}T23:59:59`),
+    du ? new Date(`${du}T00:00:00`) : null,
+    au ? new Date(`${au}T23:59:59`) : null,
     (liste) => {
       etat.mouvements = liste;
       if (etat.vue === "historique") rendreHistorique();
@@ -643,7 +645,8 @@ function rendreHistorique() {
   remplirSelect($("#hist-beneficiaire"), optionsBeneficiaires("Tous"));
 
   const liste = mouvementsFiltres();
-  $("#hist-compte").textContent = liste.length ? `${liste.length} mouvement(s) sur la période.` : "";
+  const surPeriode = $("#hist-du").value || $("#hist-au").value ? "sur la période" : "au total";
+  $("#hist-compte").textContent = liste.length ? `${liste.length} mouvement(s) ${surPeriode}.` : "";
 
   $("#hist-tbody").innerHTML = liste.length
     ? liste.map((m) => `
@@ -785,7 +788,10 @@ function exporterExcel() {
   XLSX.utils.book_append_sheet(classeur, XLSX.utils.json_to_sheet(feuilleMouvements), "Mouvements");
   XLSX.utils.book_append_sheet(classeur, XLSX.utils.json_to_sheet(feuilleRecap), "Sorties par agent-service");
   XLSX.utils.book_append_sheet(classeur, XLSX.utils.json_to_sheet(feuilleStock), "État du stock");
-  const nomFichier = `stock-${etat.partie}-${$("#hist-du").value}_${$("#hist-au").value}.xlsx`;
+  const du = $("#hist-du").value;
+  const au = $("#hist-au").value;
+  const periode = du || au ? `${du || "debut"}_${au || isoJour(new Date())}` : `tout-${isoJour(new Date())}`;
+  const nomFichier = `stock-${etat.partie}-${periode}.xlsx`;
   const contenu = XLSX.write(classeur, { bookType: "xlsx", type: "array" });
   const blob = new Blob([contenu], {
     type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
@@ -1038,5 +1044,6 @@ $("#form-benef").addEventListener("submit", async (e) => {
 // ============================================================
 
 $("#mvt-date").value = isoJour(new Date());
-$("#hist-du").value = isoJour(decalerJours(-90));
-$("#hist-au").value = isoJour(new Date());
+// Historique : aucune date par défaut, tout l'historique est affiché.
+$("#hist-du").value = "";
+$("#hist-au").value = "";
