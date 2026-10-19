@@ -18,6 +18,8 @@
   --rupture-fond: #FBE4E2;
   --rayon: 6px;
   --police: "Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --pastille-sortie-text: #fdfdfd;
+  --pastille-sortie-background: #d33131;
 }
 
 body[data-partie="epi"] {
@@ -806,8 +808,8 @@ main {
 }
 
 .pastille-sortie {
-  color: var(--encre);
-  background: var(--jauge-fond);
+  color: var(--pastille-sortie-text);
+  background: var(--pastille-sortie-background);
 }
 
 .stock-alerte {
