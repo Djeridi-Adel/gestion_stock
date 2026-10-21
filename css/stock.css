@@ -910,6 +910,16 @@ main {
   background: var(--rupture);
 }
 
+/* Masque la barre de défilement de la page, le défilement reste actif */
+html {
+  scrollbar-width: none;
+}
+
+html::-webkit-scrollbar {
+  display: none;
+}
+
+
 @media (prefers-reduced-motion: reduce) {
   .toast {
     transition: none;
